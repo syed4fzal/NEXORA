@@ -9,7 +9,11 @@ Run with:
 
 from fastapi import FastAPI
 
+from app.api.auth import auth_router
+
 app = FastAPI(title="Nexora API")
+
+app.include_router(auth_router)
 
 
 @app.get("/health", tags=["Health"])
