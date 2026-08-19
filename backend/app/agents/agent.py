@@ -1,42 +1,48 @@
 """
 app/agents/agent.py
 ~~~~~~~~~~~~~~~~~~~~
-Core agent service for Nexora. This is a local placeholder implementation
-with no external LLM or paid API calls -- it establishes the shape that
-future phases (decomposition, tool selection, tool execution, LLM
-reasoning, and verification) will build on.
+Core agent service for Nexora.
+
+This is currently a local, deterministic agent pipeline -- no external
+LLM, ML, or paid API is used anywhere in this chain.
 """
+
+from app.agents.decomposition import TaskDecomposer
+from app.agents.execution import ToolExecutor
+from app.agents.planning import TaskPlanner
+from app.agents.result import AgentResult, ResultBuilder
+from app.agents.tool_selection import ToolSelector
+from app.agents.understanding import TaskUnderstanding
+from app.agents.verification import ResultVerifier
 
 
 class NexoraAgent:
-    """The foundation of Nexora's autonomous workflow agent.
+    """Nexora's local deterministic workflow agent."""
 
-    Currently `process_task` runs a simple local placeholder pipeline.
-    Each stage below is a natural extension point for future phases:
+    def __init__(self) -> None:
+        self._understanding = TaskUnderstanding()
+        self._decomposer = TaskDecomposer()
+        self._planner = TaskPlanner()
+        self._tool_selector = ToolSelector()
+        self._executor = ToolExecutor()
+        self._verifier = ResultVerifier()
+        self._result_builder = ResultBuilder()
 
-        task
-          -> decompose_task()      (task decomposition)
-          -> select_tools()        (tool selection)
-          -> execute_tools()       (tool execution)
-          -> reason()              (LLM reasoning)
-          -> verify_result()       (result verification)
-          -> final result
-    """
+    def process_task(self, task: str) -> AgentResult:
+        """Run the complete local Nexora agent pipeline."""
 
-    def process_task(self, task: str) -> str:
-        """Process a task description and return a result summary.
-
-        This placeholder implementation performs no real decomposition,
-        planning, tool execution, or LLM reasoning -- it simply confirms
-        that Nexora received the task, so the API/agent wiring can be
-        exercised end-to-end before real agent logic is implemented.
-
-        Args:
-            task: A natural-language description of the task to process.
-
-        Returns:
-            A human-readable string confirming the task was received and
-            processed by Nexora.
-        """
         cleaned_task = task.strip()
-        return f"Nexora received and processed the task: {cleaned_task!r}"
+
+        understanding = self._understanding.understand(cleaned_task)
+        subtasks = self._decomposer.decompose(understanding)
+        plan = self._planner.create_plan(subtasks)
+
+        self._tool_selector.select_tools(plan)
+
+        execution_results = self._executor.execute(plan)
+        verification = self._verifier.verify(execution_results)
+
+        return self._result_builder.build(
+            verification,
+            execution_results,
+        )
