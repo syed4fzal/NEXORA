@@ -162,7 +162,7 @@ def run_task(
     # AgentResult is a Python object.
     # The PostgreSQL result column expects a string.
     # Therefore, store only the final summary.
-    task.result = result.summary
+    task.result = result.final_report
     task.status = "completed"
 
     db.commit()

@@ -40,13 +40,19 @@ class TaskDecomposer:
 
     @staticmethod
     def _decompose_data_analysis(understanding: TaskUnderstandingResult) -> list[str]:
-        """Build the subtask sequence for a data-analysis task."""
-        target = understanding.target
+        """Build the subtask sequence for a data-analysis task.
+
+        The third step preserves the understood `action` and `target`
+        directly (e.g. "Analyze profit", "Find loss-making
+        transactions") instead of always producing the same generic
+        wording, so the specific thing the user asked to analyze is
+        carried through into the plan.
+        """
         return [
-            f"Load the {target}",
-            f"Inspect the {target} data",
-            f"{understanding.action.capitalize()} the {target} data for unusual transactions",
-            "Prepare a summary of the findings",
+            "Load the dataset",
+            "Inspect the dataset",
+            f"{understanding.action.capitalize()} {understanding.target}",
+            "Generate the analysis report",
         ]
 
     @staticmethod
