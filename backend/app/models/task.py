@@ -1,7 +1,14 @@
 """
 app/models/task.py
 ~~~~~~~~~~~~~~~~~~~
-Task model. A task belongs to a user.
+
+Task model for Nexora.
+
+A task belongs to a user and stores:
+- task information
+- execution status
+- execution result
+- execution timing
 """
 
 from datetime import datetime
@@ -17,20 +24,93 @@ class Task(Base):
 
     __tablename__ = "tasks"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # -------------------------------------------------------------
+    # Identity
+    # -------------------------------------------------------------
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True,
+    )
+
     user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id"), index=True, nullable=False
+        ForeignKey("users.id"),
+        index=True,
+        nullable=False,
     )
-    title: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    result: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
-    status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending", server_default="pending")
+
+    # -------------------------------------------------------------
+    # Task information
+    # -------------------------------------------------------------
+
+    title: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+    )
+
+    description: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    # -------------------------------------------------------------
+    # Execution result
+    # -------------------------------------------------------------
+
+    result: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        default=None,
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        default="pending",
+        server_default="pending",
+    )
+
+    # -------------------------------------------------------------
+    # Execution timing
+    # -------------------------------------------------------------
+
+    execution_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    execution_completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    execution_time: Mapped[float | None] = mapped_column(
+        nullable=True,
+    )
+
+    # -------------------------------------------------------------
+    # Record timestamps
+    # -------------------------------------------------------------
+
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
     )
+
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
 
     def __repr__(self) -> str:
-        return f"<Task id={self.id} user_id={self.user_id} title={self.title!r} status={self.status!r}>"
+        return (
+            f"<Task "
+            f"id={self.id} "
+            f"user_id={self.user_id} "
+            f"title={self.title!r} "
+            f"status={self.status!r}>"
+        )

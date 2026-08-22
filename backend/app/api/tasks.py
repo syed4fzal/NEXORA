@@ -12,6 +12,9 @@ Provides endpoints to:
 - execute a task through the Nexora agent
 """
 
+from datetime import datetime, timezone
+from time import perf_counter
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -217,7 +220,7 @@ def run_task(
         )
 
     # -------------------------------------------------------------
-    # Prevent unnecessary re-running
+    # Prevent duplicate execution
     # -------------------------------------------------------------
 
     if task.status == "processing":
@@ -227,10 +230,16 @@ def run_task(
         )
 
     # -------------------------------------------------------------
-    # Mark task as processing
+    # Start execution timing
     # -------------------------------------------------------------
 
+    started_at = datetime.now(timezone.utc)
+    timer_start = perf_counter()
+
     task.status = "processing"
+    task.execution_started_at = started_at
+    task.execution_completed_at = None
+    task.execution_time = None
 
     db.commit()
     db.refresh(task)
@@ -247,10 +256,17 @@ def run_task(
         result = agent.process_task(task_text)
 
     except ValueError as exc:
-        # Input/decomposition/planning errors.
-        db.rollback()
+        # ---------------------------------------------------------
+        # Expected processing error
+        # ---------------------------------------------------------
+
+        execution_time = perf_counter() - timer_start
+        completed_at = datetime.now(timezone.utc)
 
         task.status = "failed"
+        task.execution_completed_at = completed_at
+        task.execution_time = execution_time
+
         db.commit()
         db.refresh(task)
 
@@ -260,10 +276,17 @@ def run_task(
         ) from exc
 
     except Exception as exc:
-        # Unexpected agent/tool failure.
-        db.rollback()
+        # ---------------------------------------------------------
+        # Unexpected processing error
+        # ---------------------------------------------------------
+
+        execution_time = perf_counter() - timer_start
+        completed_at = datetime.now(timezone.utc)
 
         task.status = "failed"
+        task.execution_completed_at = completed_at
+        task.execution_time = execution_time
+
         db.commit()
         db.refresh(task)
 
@@ -273,13 +296,22 @@ def run_task(
         ) from exc
 
     # -------------------------------------------------------------
+    # Finish execution timing
+    # -------------------------------------------------------------
+
+    execution_time = perf_counter() - timer_start
+    completed_at = datetime.now(timezone.utc)
+
+    task.execution_completed_at = completed_at
+    task.execution_time = execution_time
+
+    # -------------------------------------------------------------
     # Handle unsuccessful agent result
     # -------------------------------------------------------------
 
     if not result.success:
         task.status = "failed"
 
-        # Keep useful information even when verification fails.
         task.result = (
             result.final_report
             or result.summary
@@ -291,7 +323,7 @@ def run_task(
         return task
 
     # -------------------------------------------------------------
-    # Store successful final report
+    # Store successful result
     # -------------------------------------------------------------
 
     task.result = (
